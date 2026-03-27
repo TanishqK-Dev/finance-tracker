@@ -3,57 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tanishq | Web Developer Portfolio</title>
+    <title>CashFlow | Finance Tracker</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <header class="hero">
-        <div class="container">
-            <h1>Tanishq K.</h1>
-            <p class="subtitle">Full-Stack Developer in Training | Problem Solver</p>
-            <div class="social-links">
-                <a href="https://github.com/TanishqK-Dev" target="_blank">GitHub</a>
-                <a href="#">LinkedIn</a>
-            </div>
-        </div>
-    </header>
-
-    <section class="projects container">
-        <h2>Featured Projects</h2>
+    <div class="container">
+        <h1>💰 CashFlow</h1>
         
-        <div class="project-grid">
-            <div class="card">
-                <div class="card-content">
-                    <h3>💰 CashFlow Tracker</h3>
-                    <p>A personal finance tool that handles real-time math logic and saves data locally using JavaScript.</p>
-                    <div class="tags">
-                        <span>JavaScript</span>
-                        <span>Local Storage</span>
-                        <span>CSS3</span>
-                    </div>
-                    <a href="https://tanishqk-dev.github.io/finance-tracker/" class="project-link" target="_blank">Launch App →</a>
-                </div>
-            </div>
+        <div class="balance-container">
+            <h3>Your Balance</h3>
+            <h1 id="balance">$0.00</h1>
+        </div>
 
-            <div class="card">
-                <div class="card-content">
-                    <h3>🤖 AI Student Guide</h3>
-                    <p>An interactive guide featuring a Daily Advice API, dark mode toggle, and responsive design.</p>
-                    <div class="tags">
-                        <span>API Integration</span>
-                        <span>DOM Manipulation</span>
-                    </div>
-                    <a href="https://tanishqk-dev.github.io/ai-student-guide/" class="project-link">Launch App →</a>
-                </div>
+        <div class="inc-exp-container">
+            <div>
+                <h4>Income</h4>
+                <p id="money-plus" class="money plus">+$0.00</p>
+            </div>
+            <div>
+                <h4>Expense</h4>
+                <p id="money-minus" class="money minus">-$0.00</p>
             </div>
         </div>
-    </section>
 
-    <footer>
-        <p>&copy; 2026 Tanishq K. | Built with Code & AI</p>
-    </footer>
+        <h3>History</h3>
+        <ul id="list" class="list"></ul>
 
+        <h3>Add New Transaction</h3>
+        <form id="form">
+            <div class="form-control">
+                <label for="text">Description</label>
+                <input type="text" id="text" placeholder="e.g. Lunch, Salary..." required />
+            </div>
+            
+            <div class="form-control">
+                <label for="category">Category</label>
+                <select id="category">
+                    <option value="Salary">💰 Salary</option>
+                    <option value="Food">🍔 Food</option>
+                    <option value="Rent">🏠 Rent</option>
+                    <option value="Fun">🎮 Entertainment</option>
+                    <option value="Other">📦 Other</option>
+                </select>
+            </div>
+
+            <div class="form-control">
+                <label for="amount">Amount (Negative = Expense, Positive = Income)</label>
+                <input type="number" id="amount" placeholder="-10 or 500" step="0.01" required />
+            </div>
+            <button class="btn reset-btn" id="reset-btn" style="background-color: #777; margin-top: 0;">Clear All Data</button>
+
+            <button class="btn">Add Transaction</button>
+        </form>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
+>
