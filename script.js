@@ -25,25 +25,20 @@ const config = {
 let currentMode = 'personal';
 let transactions = [];
 
-// 🔄 Switch between Personal and Business modes
 function switchMode() {
     currentMode = modeToggle.checked ? 'business' : 'personal';
     modeLabel.innerText = config[currentMode].label;
     document.body.className = currentMode + '-mode';
-    
     const saved = JSON.parse(localStorage.getItem(config[currentMode].key));
     transactions = saved || [];
-    
     categorySelect.innerHTML = config[currentMode].cats
         .map(c => `<option value="${c}">${c}</option>`).join('');
     init();
 }
 
-// ➕ Add new transaction
 function addTransaction(e) {
     e.preventDefault();
     if (!text.value || !amount.value) return alert('Please fill all fields');
-    
     const transaction = { 
         id: Date.now(), 
         text: text.value, 
@@ -51,27 +46,22 @@ function addTransaction(e) {
         amount: +amount.value, 
         date: new Date().toLocaleDateString() 
     };
-    
     transactions.push(transaction);
     updateLocalStorage();
-    text.value = ''; 
-    amount.value = '';
+    text.value = ''; amount.value = '';
     init();
 }
 
-// 📈 Update Income, Expense, and Total Balance
 function updateValues() {
     const amounts = transactions.map(t => t.amount);
     const total = amounts.reduce((acc, item) => (acc += item), 0).toFixed(2);
     const inc = amounts.filter(item => item > 0).reduce((acc, item) => (acc += item), 0).toFixed(2);
     const exp = (amounts.filter(item => item < 0).reduce((acc, item) => (acc += item), 0) * -1).toFixed(2);
-    
     balance.innerText = `$${total}`; 
     money_plus.innerText = `+$${inc}`; 
     money_minus.innerText = `-$${exp}`;
 }
 
-// 📜 Render Transaction List
 function init() {
     list.innerHTML = '';
     transactions.forEach(t => {
@@ -87,54 +77,48 @@ function init() {
     updateValues();
 }
 
-// ❌ Remove transaction
 function removeTx(id) { 
     transactions = transactions.filter(t => t.id !== id); 
     updateLocalStorage(); 
     init(); 
 }
 
-// 💾 Save to Browser Storage
 function updateLocalStorage() { 
     localStorage.setItem(config[currentMode].key, JSON.stringify(transactions)); 
 }
 
-// 📥 EXPORT ENGINE (Fixed for Emojis & Strange Characters)
+// --- THE FINAL ACCURATE EXPORT ENGINE ---
 document.getElementById('export-btn').addEventListener('click', () => {
     if (transactions.length === 0) return alert("No data to export");
 
-    // 1. Build CSV text string
-    let csvContent = "Date,Description,Category,Amount\r\n";
+    // 1. Create CSV header and rows
+    let csvString = "Date,Description,Category,Amount\r\n";
     transactions.forEach(t => {
-        // Clean commas from text so they don't break CSV columns
-        let cleanDesc = t.text.replace(/,/g, "");
-        csvContent += `${t.date},${cleanDesc},${t.category},${t.amount}\r\n`;
+        let cleanText = t.text.replace(/,/g, ""); // Remove commas to keep columns clean
+        csvString += `${t.date},${cleanText},${t.category},${t.amount}\r\n`;
     });
 
-    // 2. Create a Byte Order Mark (BOM) for UTF-8
-    // This is the "Magic Fix" for emojis and weird language letters
+    // 2. Add the UTF-8 BOM (Byte Order Mark) using Uint8Array
+    // This is the direct fix for the Mandarin/Weird letters
     const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-    
-    // 3. Combine BOM and CSV text into a Blob
-    const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([bom, csvString], { type: 'text/csv;charset=utf-8' });
+
+    // 3. Force download with correct filename
     const url = window.URL.createObjectURL(blob);
-    
-    // 4. Create and trigger download link
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `CashFlow_${currentMode}.csv`);
+    link.download = `CashFlow_${currentMode}.csv`;
     
     document.body.appendChild(link);
     link.click();
     
-    // 5. Cleanup temporary URL memory
+    // 4. Cleanup memory
     setTimeout(() => {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
     }, 100);
 });
 
-// 🧹 Reset current mode data
 document.getElementById('reset-btn').addEventListener('click', () => {
     if(confirm(`Clear all ${currentMode} data?`)) { 
         transactions = []; 
@@ -143,10 +127,7 @@ document.getElementById('reset-btn').addEventListener('click', () => {
     }
 });
 
-// Event Listeners
 modeToggle.addEventListener('change', switchMode);
 form.addEventListener('submit', addTransaction);
-
-// Initial Load
 switchMode();
 
