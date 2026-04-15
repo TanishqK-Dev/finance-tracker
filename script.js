@@ -1,4 +1,3 @@
-
 const balance = document.getElementById('balance');
 const money_plus = document.getElementById('money-plus');
 const money_minus = document.getElementById('money-minus');
@@ -30,8 +29,14 @@ function switchMode() {
 
 function addTransaction(e) {
     e.preventDefault();
-    if (!text.value || !amount.value) return alert('Fill all fields');
-    const transaction = { id: Date.now(), text: text.value, category: categorySelect.value, amount: +amount.value, date: new Date().toLocaleDateString() };
+    if (!text.value || !amount.value) return alert('Please fill all fields');
+    const transaction = { 
+        id: Date.now(), 
+        text: text.value, 
+        category: categorySelect.value, 
+        amount: +amount.value, 
+        date: new Date().toLocaleDateString() 
+    };
     transactions.push(transaction);
     updateLocalStorage();
     text.value = ''; amount.value = '';
@@ -60,34 +65,31 @@ function init() {
 function removeTx(id) { transactions = transactions.filter(t => t.id !== id); updateLocalStorage(); init(); }
 function updateLocalStorage() { localStorage.setItem(config[currentMode].key, JSON.stringify(transactions)); }
 
-// --- THE MOBILE SHARE FIX (Works in Acode & Chrome) ---
-document.getElementById('export-btn').addEventListener('click', async () => {
+// --- FIXED EXPORT ENGINE (BOM INCLUDED FOR EMOJIS) ---
+document.getElementById('export-btn').addEventListener('click', () => {
     if (transactions.length === 0) return alert("No data to export");
 
-    let csvContent = "Date,Description,Category,Amount\r\n";
+    // \ufeff is the BOM that tells Excel/Sheets to read emojis correctly
+    let csvContent = "\ufeffDate,Description,Category,Amount\r\n";
     transactions.forEach(t => {
-        csvContent += `${t.date},${t.text.replace(/,/g, "")},${t.category},${t.amount}\r\n`;
+        let cleanText = t.text.replace(/,/g, "");
+        csvContent += `${t.date},${cleanText},${t.category},${t.amount}\r\n`;
     });
 
-    const fileName = `CashFlow_${currentMode}.csv`;
-    const file = new File([csvContent], fileName, { type: 'text/csv' });
-
-    // Check if the phone supports the Share API (Most modern Androids do)
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-            await navigator.share({
-                files: [file],
-                title: 'Finance Export',
-                text: 'Here is your CashFlow CSV data.',
-            });
-        } catch (err) {
-            console.error("Share failed:", err);
-            alert("Export failed. Please try on a live browser (GitHub).");
-        }
-    } else {
-        // Fallback for older browsers
-        alert("Your browser/previewer doesn't support sharing. Please upload to GitHub first!");
-    }
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `CashFlow_${currentMode}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    
+    setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    }, 100);
 });
 
 document.getElementById('reset-btn').addEventListener('click', () => {
