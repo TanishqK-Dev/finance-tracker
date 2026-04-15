@@ -10,26 +10,40 @@ const modeToggle = document.getElementById('mode-toggle');
 const modeLabel = document.getElementById('mode-label');
 
 const config = {
-    personal: { key: 'p_transactions', label: 'Personal Mode', cats: ['🍔 Food', '🏠 Rent', '🎮 Fun', '🛒 Shopping', '💰 Salary'] },
-    business: { key: 'b_transactions', label: 'Business Mode', cats: ['📈 Trading/Inv', '🏢 Office Rent', '💻 Software', '📣 Marketing', '💳 Client Pay'] }
+    personal: { 
+        key: 'p_transactions', 
+        label: 'Personal Mode', 
+        cats: ['🍔 Food', '🏠 Rent', '🎮 Fun', '🛒 Shopping', '💰 Salary'] 
+    },
+    business: { 
+        key: 'b_transactions', 
+        label: 'Business Mode', 
+        cats: ['📈 Trading/Inv', '🏢 Office Rent', '💻 Software', '📣 Marketing', '💳 Client Pay'] 
+    }
 };
 
 let currentMode = 'personal';
 let transactions = [];
 
+// 🔄 Switch between Personal and Business modes
 function switchMode() {
     currentMode = modeToggle.checked ? 'business' : 'personal';
     modeLabel.innerText = config[currentMode].label;
     document.body.className = currentMode + '-mode';
+    
     const saved = JSON.parse(localStorage.getItem(config[currentMode].key));
     transactions = saved || [];
-    categorySelect.innerHTML = config[currentMode].cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    
+    categorySelect.innerHTML = config[currentMode].cats
+        .map(c => `<option value="${c}">${c}</option>`).join('');
     init();
 }
 
+// ➕ Add new transaction
 function addTransaction(e) {
     e.preventDefault();
     if (!text.value || !amount.value) return alert('Please fill all fields');
+    
     const transaction = { 
         id: Date.now(), 
         text: text.value, 
@@ -37,50 +51,75 @@ function addTransaction(e) {
         amount: +amount.value, 
         date: new Date().toLocaleDateString() 
     };
+    
     transactions.push(transaction);
     updateLocalStorage();
-    text.value = ''; amount.value = '';
+    text.value = ''; 
+    amount.value = '';
     init();
 }
 
+// 📈 Update Income, Expense, and Total Balance
 function updateValues() {
     const amounts = transactions.map(t => t.amount);
     const total = amounts.reduce((acc, item) => (acc += item), 0).toFixed(2);
     const inc = amounts.filter(item => item > 0).reduce((acc, item) => (acc += item), 0).toFixed(2);
     const exp = (amounts.filter(item => item < 0).reduce((acc, item) => (acc += item), 0) * -1).toFixed(2);
-    balance.innerText = `$${total}`; money_plus.innerText = `+$${inc}`; money_minus.innerText = `-$${exp}`;
+    
+    balance.innerText = `$${total}`; 
+    money_plus.innerText = `+$${inc}`; 
+    money_minus.innerText = `-$${exp}`;
 }
 
+// 📜 Render Transaction List
 function init() {
     list.innerHTML = '';
     transactions.forEach(t => {
         const item = document.createElement('li');
         item.classList.add(t.amount < 0 ? 'minus' : 'plus');
-        item.innerHTML = `<div><strong>${t.text}</strong><br><small>${t.category} | ${t.date}</small></div><span>${t.amount < 0 ? '-' : '+'}$${Math.abs(t.amount).toFixed(2)}</span><button class="delete-btn" onclick="removeTx(${t.id})">Del</button>`;
+        item.innerHTML = `
+            <div><strong>${t.text}</strong><br><small>${t.category} | ${t.date}</small></div>
+            <span>${t.amount < 0 ? '-' : '+'}$${Math.abs(t.amount).toFixed(2)}</span>
+            <button class="delete-btn" onclick="removeTx(${t.id})">Del</button>
+        `;
         list.appendChild(item);
     });
     updateValues();
 }
 
-function removeTx(id) { transactions = transactions.filter(t => t.id !== id); updateLocalStorage(); init(); }
-function updateLocalStorage() { localStorage.setItem(config[currentMode].key, JSON.stringify(transactions)); }
+// ❌ Remove transaction
+function removeTx(id) { 
+    transactions = transactions.filter(t => t.id !== id); 
+    updateLocalStorage(); 
+    init(); 
+}
 
-// --- THE FINAL EMOJI-FIXED EXPORT ENGINE ---
+// 💾 Save to Browser Storage
+function updateLocalStorage() { 
+    localStorage.setItem(config[currentMode].key, JSON.stringify(transactions)); 
+}
+
+// 📥 EXPORT ENGINE (Fixed for Emojis & Strange Characters)
 document.getElementById('export-btn').addEventListener('click', () => {
     if (transactions.length === 0) return alert("No data to export");
 
-    // \ufeff is the "Byte Order Mark" that forces Excel/Sheets to show emojis correctly
-    let csvContent = "\ufeffDate,Description,Category,Amount\r\n";
-
+    // 1. Build CSV text string
+    let csvContent = "Date,Description,Category,Amount\r\n";
     transactions.forEach(t => {
-        // Remove commas from descriptions so they don't break the CSV columns
-        let cleanText = t.text.replace(/,/g, "");
-        csvContent += `${t.date},${cleanText},${t.category},${t.amount}\r\n`;
+        // Clean commas from text so they don't break CSV columns
+        let cleanDesc = t.text.replace(/,/g, "");
+        csvContent += `${t.date},${cleanDesc},${t.category},${t.amount}\r\n`;
     });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // 2. Create a Byte Order Mark (BOM) for UTF-8
+    // This is the "Magic Fix" for emojis and weird language letters
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    
+    // 3. Combine BOM and CSV text into a Blob
+    const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     
+    // 4. Create and trigger download link
     const link = document.createElement("a");
     link.href = url;
     link.setAttribute("download", `CashFlow_${currentMode}.csv`);
@@ -88,16 +127,26 @@ document.getElementById('export-btn').addEventListener('click', () => {
     document.body.appendChild(link);
     link.click();
     
+    // 5. Cleanup temporary URL memory
     setTimeout(() => {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
     }, 100);
 });
 
+// 🧹 Reset current mode data
 document.getElementById('reset-btn').addEventListener('click', () => {
-    if(confirm(`Clear all ${currentMode} data?`)) { transactions = []; updateLocalStorage(); init(); }
+    if(confirm(`Clear all ${currentMode} data?`)) { 
+        transactions = []; 
+        updateLocalStorage(); 
+        init(); 
+    }
 });
 
+// Event Listeners
 modeToggle.addEventListener('change', switchMode);
 form.addEventListener('submit', addTransaction);
+
+// Initial Load
 switchMode();
+
