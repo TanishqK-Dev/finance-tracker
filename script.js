@@ -65,13 +65,15 @@ function init() {
 function removeTx(id) { transactions = transactions.filter(t => t.id !== id); updateLocalStorage(); init(); }
 function updateLocalStorage() { localStorage.setItem(config[currentMode].key, JSON.stringify(transactions)); }
 
-// --- FIXED EXPORT ENGINE (BOM INCLUDED FOR EMOJIS) ---
+// --- THE FINAL EMOJI-FIXED EXPORT ENGINE ---
 document.getElementById('export-btn').addEventListener('click', () => {
     if (transactions.length === 0) return alert("No data to export");
 
-    // \ufeff is the BOM that tells Excel/Sheets to read emojis correctly
+    // \ufeff is the "Byte Order Mark" that forces Excel/Sheets to show emojis correctly
     let csvContent = "\ufeffDate,Description,Category,Amount\r\n";
+
     transactions.forEach(t => {
+        // Remove commas from descriptions so they don't break the CSV columns
         let cleanText = t.text.replace(/,/g, "");
         csvContent += `${t.date},${cleanText},${t.category},${t.amount}\r\n`;
     });
