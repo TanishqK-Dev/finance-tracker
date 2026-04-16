@@ -25,113 +25,155 @@ const config = {
 let currentMode = 'personal';
 let transactions = [];
 
+// 🔁 SWITCH MODE
 function switchMode() {
     currentMode = modeToggle.checked ? 'business' : 'personal';
     modeLabel.innerText = config[currentMode].label;
     document.body.className = currentMode + '-mode';
+
     const saved = JSON.parse(localStorage.getItem(config[currentMode].key));
     transactions = saved || [];
+
     categorySelect.innerHTML = config[currentMode].cats
-        .map(c => `<option value="${c}">${c}</option>`).join('');
+        .map(c => `<option value="${c}">${c}</option>`)
+        .join('');
+
     init();
 }
 
+// ➕ ADD TRANSACTION
 function addTransaction(e) {
     e.preventDefault();
-    if (!text.value || !amount.value) return alert('Please fill all fields');
+
+    if (!text.value || !amount.value) {
+        return alert('Please fill all fields');
+    }
+
     const transaction = { 
         id: Date.now(), 
         text: text.value, 
         category: categorySelect.value, 
         amount: +amount.value, 
+        // ✅ FIXED DATE FORMAT
         date: new Date().toISOString().split('T')[0]
     };
+
     transactions.push(transaction);
     updateLocalStorage();
-    text.value = ''; amount.value = '';
+
+    text.value = '';
+    amount.value = '';
+
     init();
 }
 
+// 📊 UPDATE VALUES
 function updateValues() {
     const amounts = transactions.map(t => t.amount);
-    const total = amounts.reduce((acc, item) => (acc += item), 0).toFixed(2);
-    const inc = amounts.filter(item => item > 0).reduce((acc, item) => (acc += item), 0).toFixed(2);
-    const exp = (amounts.filter(item => item < 0).reduce((acc, item) => (acc += item), 0) * -1).toFixed(2);
-    balance.innerText = `$${total}`; 
-    money_plus.innerText = `+$${inc}`; 
+
+    const total = amounts.reduce((acc, item) => acc + item, 0).toFixed(2);
+
+    const inc = amounts
+        .filter(item => item > 0)
+        .reduce((acc, item) => acc + item, 0)
+        .toFixed(2);
+
+    const exp = (
+        amounts
+            .filter(item => item < 0)
+            .reduce((acc, item) => acc + item, 0) * -1
+    ).toFixed(2);
+
+    balance.innerText = `$${total}`;
+    money_plus.innerText = `+$${inc}`;
     money_minus.innerText = `-$${exp}`;
 }
 
+// 🧾 INIT UI
 function init() {
     list.innerHTML = '';
+
     transactions.forEach(t => {
         const item = document.createElement('li');
         item.classList.add(t.amount < 0 ? 'minus' : 'plus');
+
         item.innerHTML = `
-            <div><strong>${t.text}</strong><br><small>${t.category} | ${t.date}</small></div>
+            <div>
+                <strong>${t.text}</strong><br>
+                <small>${t.category} | ${t.date}</small>
+            </div>
             <span>${t.amount < 0 ? '-' : '+'}$${Math.abs(t.amount).toFixed(2)}</span>
             <button class="delete-btn" onclick="removeTx(${t.id})">Del</button>
         `;
+
         list.appendChild(item);
     });
+
     updateValues();
 }
 
+// ❌ REMOVE TRANSACTION
 function removeTx(id) { 
     transactions = transactions.filter(t => t.id !== id); 
     updateLocalStorage(); 
     init(); 
 }
 
+// 💾 SAVE DATA
 function updateLocalStorage() { 
     localStorage.setItem(config[currentMode].key, JSON.stringify(transactions)); 
 }
 
-// --- THE FINAL ACCURATE EXPORT ENGINE ---
+// 📥 EXPORT CSV (FIXED)
 document.getElementById('export-btn').addEventListener('click', () => {
-    if (transactions.length === 0) return alert("No data to export");
+    if (transactions.length === 0) {
+        return alert("No data to export");
+    }
 
-    // 1. Create CSV header and rows
     let csvString = "Date,Description,Category,Amount\r\n";
 
-transactions.forEach(t => {
-    let cleanText = t.text.replace(/,/g, "");
-    let cleanCategory = t.category.replace(/[\u{1F300}-\u{1FAFF}]/gu, '').trim();
+    transactions.forEach(t => {
+        let cleanText = t.text.replace(/,/g, "");
 
-    csvString += `"${t.date}","${cleanText}","${cleanCategory}","${t.amount}"\r\n`;
-});
+        // ✅ Remove emojis to avoid weird symbols
+        let cleanCategory = t.category
+            .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
+            .trim();
+
+        csvString += `"${t.date}","${cleanText}","${cleanCategory}","${t.amount}"\r\n`;
     });
 
-    // 2. Add the UTF-8 BOM (Byte Order Mark) using Uint8Array
-    // This is the direct fix for the Mandarin/Weird letters
+    // ✅ UTF-8 BOM
     const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-    const blob = new Blob([bom, csvString], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob([bom, csvString], { type: 'text/csv;charset=utf-8;' });
 
-    // 3. Force download with correct filename
-    const url = window.URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
+
     link.href = url;
     link.download = `CashFlow_${currentMode}.csv`;
-    
+
     document.body.appendChild(link);
     link.click();
-    
-    // 4. Cleanup memory
+
     setTimeout(() => {
         document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        URL.revokeObjectURL(url);
     }, 100);
 });
 
+// 🧹 RESET DATA
 document.getElementById('reset-btn').addEventListener('click', () => {
-    if(confirm(`Clear all ${currentMode} data?`)) { 
+    if (confirm(`Clear all ${currentMode} data?`)) { 
         transactions = []; 
         updateLocalStorage(); 
         init(); 
     }
 });
 
+// 🎛 EVENTS
 modeToggle.addEventListener('change', switchMode);
 form.addEventListener('submit', addTransaction);
-switchMode();
 
+// 🚀 START
+switchMode();
