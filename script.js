@@ -44,7 +44,7 @@ function addTransaction(e) {
         text: text.value, 
         category: categorySelect.value, 
         amount: +amount.value, 
-        date: new Date().toLocaleDateString() 
+        date: new Date().toISOString().split('T')[0]
     };
     transactions.push(transaction);
     updateLocalStorage();
@@ -93,9 +93,13 @@ document.getElementById('export-btn').addEventListener('click', () => {
 
     // 1. Create CSV header and rows
     let csvString = "Date,Description,Category,Amount\r\n";
-    transactions.forEach(t => {
-        let cleanText = t.text.replace(/,/g, ""); // Remove commas to keep columns clean
-        csvString += `${t.date},${cleanText},${t.category},${t.amount}\r\n`;
+
+transactions.forEach(t => {
+    let cleanText = t.text.replace(/,/g, "");
+    let cleanCategory = t.category.replace(/[\u{1F300}-\u{1FAFF}]/gu, '').trim();
+
+    csvString += `"${t.date}","${cleanText}","${cleanCategory}","${t.amount}"\r\n`;
+});
     });
 
     // 2. Add the UTF-8 BOM (Byte Order Mark) using Uint8Array
