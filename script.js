@@ -25,37 +25,42 @@ const config = {
 let currentMode = 'personal';
 let transactions = [];
 
-// 🔁 SWITCH MODE
+// SWITCH MODE
 function switchMode() {
     currentMode = modeToggle.checked ? 'business' : 'personal';
     modeLabel.innerText = config[currentMode].label;
     document.body.className = currentMode + '-mode';
 
-    const saved = JSON.parse(localStorage.getItem(config[currentMode].key));
-    transactions = saved || [];
+    const saved = localStorage.getItem(config[currentMode].key);
+    transactions = saved ? JSON.parse(saved) : [];
 
-    categorySelect.innerHTML = config[currentMode].cats
-        .map(c => `<option value="${c}">${c}</option>`)
-        .join('');
+    // Populate categories
+    categorySelect.innerHTML = '';
+    config[currentMode].cats.forEach(c => {
+        const option = document.createElement('option');
+        option.value = c;
+        option.innerText = c;
+        categorySelect.appendChild(option);
+    });
 
     init();
 }
 
-// ➕ ADD TRANSACTION
+// ADD TRANSACTION
 function addTransaction(e) {
     e.preventDefault();
 
     if (!text.value || !amount.value) {
-        return alert('Please fill all fields');
+        alert('Please fill all fields');
+        return;
     }
 
     const transaction = { 
         id: Date.now(), 
         text: text.value, 
         category: categorySelect.value, 
-        amount: +amount.value, 
-        // ✅ FIXED DATE FORMAT
-        date: new Date().toISOString().split('T')[0]
+        amount: Number(amount.value), 
+        date: new Date().toISOString().split('T')[0] // safe date
     };
 
     transactions.push(transaction);
@@ -67,37 +72,37 @@ function addTransaction(e) {
     init();
 }
 
-// 📊 UPDATE VALUES
+// UPDATE VALUES
 function updateValues() {
     const amounts = transactions.map(t => t.amount);
 
-    const total = amounts.reduce((acc, item) => acc + item, 0).toFixed(2);
+    const total = amounts.reduce((a, b) => a + b, 0).toFixed(2);
 
-    const inc = amounts
-        .filter(item => item > 0)
-        .reduce((acc, item) => acc + item, 0)
+    const income = amounts
+        .filter(a => a > 0)
+        .reduce((a, b) => a + b, 0)
         .toFixed(2);
 
-    const exp = (
+    const expense = (
         amounts
-            .filter(item => item < 0)
-            .reduce((acc, item) => acc + item, 0) * -1
+            .filter(a => a < 0)
+            .reduce((a, b) => a + b, 0) * -1
     ).toFixed(2);
 
     balance.innerText = `$${total}`;
-    money_plus.innerText = `+$${inc}`;
-    money_minus.innerText = `-$${exp}`;
+    money_plus.innerText = `+$${income}`;
+    money_minus.innerText = `-$${expense}`;
 }
 
-// 🧾 INIT UI
+// INIT UI
 function init() {
     list.innerHTML = '';
 
     transactions.forEach(t => {
-        const item = document.createElement('li');
-        item.classList.add(t.amount < 0 ? 'minus' : 'plus');
+        const li = document.createElement('li');
+        li.classList.add(t.amount < 0 ? 'minus' : 'plus');
 
-        item.innerHTML = `
+        li.innerHTML = `
             <div>
                 <strong>${t.text}</strong><br>
                 <small>${t.category} | ${t.date}</small>
@@ -106,74 +111,65 @@ function init() {
             <button class="delete-btn" onclick="removeTx(${t.id})">Del</button>
         `;
 
-        list.appendChild(item);
+        list.appendChild(li);
     });
 
     updateValues();
 }
 
-// ❌ REMOVE TRANSACTION
-function removeTx(id) { 
-    transactions = transactions.filter(t => t.id !== id); 
-    updateLocalStorage(); 
-    init(); 
+// REMOVE TRANSACTION
+function removeTx(id) {
+    transactions = transactions.filter(t => t.id !== id);
+    updateLocalStorage();
+    init();
 }
 
-// 💾 SAVE DATA
-function updateLocalStorage() { 
-    localStorage.setItem(config[currentMode].key, JSON.stringify(transactions)); 
+// SAVE
+function updateLocalStorage() {
+    localStorage.setItem(config[currentMode].key, JSON.stringify(transactions));
 }
 
-// 📥 EXPORT CSV (FIXED)
+// EXPORT CSV (SAFE VERSION)
 document.getElementById('export-btn').addEventListener('click', () => {
     if (transactions.length === 0) {
-        return alert("No data to export");
+        alert("No data to export");
+        return;
     }
 
-    let csvString = "Date,Description,Category,Amount\r\n";
+    let csv = "Date,Description,Category,Amount\n";
 
     transactions.forEach(t => {
         let cleanText = t.text.replace(/,/g, "");
+        
+        // simple safe cleaning (no fancy regex)
+        let cleanCategory = t.category.replace(/[^\x00-\x7F]/g, "");
 
-        // ✅ Remove emojis to avoid weird symbols
-        let cleanCategory = t.category
-            .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
-            .trim();
-
-        csvString += `"${t.date}","${cleanText}","${cleanCategory}","${t.amount}"\r\n`;
+        csv += `"${t.date}","${cleanText}","${cleanCategory}","${t.amount}"\n`;
     });
 
-    // ✅ UTF-8 BOM
-    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-    const blob = new Blob([bom, csvString], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
 
-    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-
-    link.href = url;
+    link.href = URL.createObjectURL(blob);
     link.download = `CashFlow_${currentMode}.csv`;
 
     document.body.appendChild(link);
     link.click();
-
-    setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    }, 100);
+    document.body.removeChild(link);
 });
 
-// 🧹 RESET DATA
+// RESET
 document.getElementById('reset-btn').addEventListener('click', () => {
-    if (confirm(`Clear all ${currentMode} data?`)) { 
-        transactions = []; 
-        updateLocalStorage(); 
-        init(); 
+    if (confirm(`Clear all ${currentMode} data?`)) {
+        transactions = [];
+        updateLocalStorage();
+        init();
     }
 });
 
-// 🎛 EVENTS
+// EVENTS
 modeToggle.addEventListener('change', switchMode);
 form.addEventListener('submit', addTransaction);
 
-// 🚀 START
+// START
 switchMode();
